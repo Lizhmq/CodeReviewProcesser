@@ -27,7 +27,7 @@ token = args.token
 
 
 conn, cur = get_cursor(db, user, password)
-data = cur.execute("SELECT a.id, a.hunk_diff, a.message, a.created_at, b.diff, b.newf FROM comment a JOIN comment_file_pair b ON a.id = b.id;")
+data = cur.execute("SELECT a.id, a.hunk_diff, a.message, a.created_at, b.oldf, b.diff, b.newf FROM comment a JOIN comment_file_pair b ON a.id = b.id;")
 data = data.fetchall()
 dics = gen_dic(cur.description, data)
 dics = sorted(dics, key=lambda dic: dic["created_at"])
@@ -57,15 +57,27 @@ def locate_kth_patch(hunkdiff, diff):
     count = diff[:idx].count("@@") // 2
     return count
 
+def get_key_from_patch(s):
+    '''
+        Remove the frist line.  "@@ --, ++ @@"
+    '''
+    idx = s.find("\n")
+    if idx == -1:
+        idx = 0
+    return s[idx:]
+
+
 if not os.path.exists("tmpfscr"):
     os.mkdir("tmpfscr")
 
 # extract one hunk diff
+mmap = {}
 print(f"Start create gen dataset for {repo}")
-pairs = []
 for dic in tqdm(filtered_dic):
     hunkdiff = dic["hunk_diff"]
     diff = dic["diff"]
+    oldf = dic["oldf"]
+    msg = dic["message"]
     open(f"tmpfscr/a-{lang}-{filerepo}.txt", "w").write(diff)
     open(f"tmpfscr/b-{lang}-{filerepo}.txt", "w").write(hunkdiff)
     kth = locate_kth_patch(hunkdiff, diff)
@@ -84,12 +96,19 @@ for dic in tqdm(filtered_dic):
     #     continue
     if len(patch) == 0:
         continue
-    pairs.append({"patch": patch, "msg": dic["message"]})
-    # print(patch)
-    # print(dic["message"])
+    key = get_key_from_patch(patch)
+    if key in mmap:
+        continue
+    else:
+        mmap[key] = (oldf, patch, msg)
+
 os.system(f"rm tmpfscr/a-{lang}-{filerepo}.txt tmpfscr/b-{lang}-{filerepo}.txt tmpfscr/c-{lang}-{filerepo}.txt")
 
-with open(f"review_gen_{lang}_{repo.replace('/', '-')}.json", "w") as f:
+pairs = []
+for key, value in mmap.items():
+    oldf, patch, msg = value
+    pairs.append({"oldf": oldf, "patch": patch, "msg": msg})
+with open(f"reviews/review_gen_{lang}_{repo.replace('/', '-')}.json", "w") as f:
     json.dump(pairs, f)
 
 

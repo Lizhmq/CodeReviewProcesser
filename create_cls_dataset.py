@@ -27,7 +27,7 @@ token = args.token
 
 
 conn, cur = get_cursor(db, user, password)
-data = cur.execute("SELECT a.id, a.hunk_diff, a.message, a.created_at, b.diff, b.newf FROM comment a JOIN comment_file_pair b ON a.id = b.id;")
+data = cur.execute("SELECT a.id, a.hunk_diff, a.message, a.created_at, b.oldf, b.diff, b.newf FROM comment a JOIN comment_file_pair b ON a.id = b.id;")
 data = data.fetchall()
 dics = gen_dic(cur.description, data)
 dics = sorted(dics, key=lambda dic: dic["created_at"])
@@ -57,6 +57,15 @@ def locate_kth_patch(hunkdiff, diff):
     count = diff[:idx].count("@@") // 2
     return count
 
+def get_key_from_patch(s):
+    '''
+        Remove the frist line.  "@@ --, ++ @@"
+    '''
+    idx = s.find("\n")
+    if idx == -1:
+        idx = 0
+    return s[idx:]
+
 
 if not os.path.exists("tmpfscr2"):
     os.mkdir("tmpfscr2")
@@ -64,11 +73,12 @@ if not os.path.exists("tmpfscr2"):
 
 print(f"Start create cls dataset for {repo}")
 # extract one hunk diff
-m = {}
-idxm = {}
+
+mmap = {}
 for dic in tqdm(filtered_dic):
     hunkdiff = dic["hunk_diff"]
     diff = dic["diff"]
+    oldf = dic["oldf"]
     kth = locate_kth_patch(hunkdiff, diff)
     open(f"tmpfscr2/diff-{lang}-{filerepo}.txt", "w").write(diff)
     hunk_cnts = diff.count("@@") // 2
@@ -86,21 +96,22 @@ for dic in tqdm(filtered_dic):
             y = 1
         else:
             y = 0
-        if patch in m:
-            if y == 1:
-                m[patch] = 1
-                idxm[patch] = i
+        key = get_key_from_patch(patch)
+        if key in mmap:
+            stored_y, stored_patch, stored_file, stored_idx = mmap[key]
+            if y == 1 and stored_y == 0:
+                mmap[key] = (y, patch, oldf, i)
         else:
-            m[patch] = y
-            idxm[patch] = i
-print(sum(m.values()))
+            mmap[key] = (y, patch, oldf, i)
+# print(sum(m.values()))
 os.system(f"rm tmpfscr2/diff-{lang}-{filerepo}.txt tmpfscr2/hunk-{lang}-{filerepo}.txt")
     
 pairs = []
-for key, value in m.items():
-    pairs.append({"patch": key, "y": value, "idx": idxm[key]})
+for key, value in mmap.items():
+    y, patch, oldf, idx = value
+    pairs.append({"patch": key, "y": value, "oldf": oldf, "idx": idx})
 
-with open(f"review_cls_{lang}_{filerepo}.json", "w") as f:
+with open(f"reviews/review_cls_{lang}_{filerepo}.json", "w") as f:
     json.dump(pairs, f)
 
 
