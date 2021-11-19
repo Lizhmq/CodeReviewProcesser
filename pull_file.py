@@ -2,6 +2,7 @@ import os, sys, time
 import logging
 import pprint
 import requests
+import argparse
 from tqdm import tqdm
 from utils import get_cursor, get_all, get_from_attr, findkth
 pprint = pprint.PrettyPrinter(indent=4).pprint
@@ -9,16 +10,24 @@ pprint = pprint.PrettyPrinter(indent=4).pprint
 FORMAT = '%(asctime)-15s %(message)s'
 logging.basicConfig(stream=sys.stdout, format=FORMAT)
 logger = logging.getLogger("filepuller")
+parser = argparse.ArgumentParser()
+parser.add_argument("--db", default=None, type=str, required=True)
+parser.add_argument("--repo", default=None, type=str, required=True)
+parser.add_argument("--lang", default=None, type=str, required=True)
+parser.add_argument("--token", default=None, type=str, required=True)
+args = parser.parse_args()
 
 
 def main():
     user, password = "FAREAST.v-zhuoli1", "passward"
-    db = "etcr"
-    repo = "elastic/elasticsearch"
-    token = "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"
+    db, repo, lang, token = args.db, args.repo, args.lang, args.token
+    filerepo = repo.replace("/", '-')
     conn, cur = get_cursor(db, user, password)
     comments = get_all(cur, "comment")
     filtered_cmts = [cmt for cmt in comments if cmt["hunk_file"] and cmt["hunk_file"].endswith(".java")]
+
+    if not os.path.exists("tmpfspl"):
+        os.mkdir("tmpfspl")
 
     headers = {"Authorization": f"token {token}"}
     not_found = ['400: Invalid request', '404: Not Found']
@@ -85,13 +94,13 @@ def main():
         except:
             logger.warning(f"\tError during pull file {oldurl} ++ {newurl}")
             continue
-        open("tmpa.txt", "w").write(old_contents)
-        open("tmpb.txt", "w").write(new_contents)
-        os.system("git diff --no-index tmpa.txt tmpb.txt > tmpdiff.txt")
+        open(f"tmpfspl/a-{lang}-{filerepo}.txt", "w").write(old_contents)
+        open(f"tmpfspl/b-{lang}-{filerepo}.txt", "w").write(new_contents)
+        os.system(f"git diff --no-index tmpfspl/a-{lang}-{filerepo}.txt tmpfspl/b-{lang}-{filerepo}.txt > tmpfspl/diff-{lang}-{filerepo}.txt")
         # diff = difflib.unified_diff(old_contents.splitlines(keepends=True), 
         #         new_contents.splitlines(keepends=True), fromfile=file_path.split("/")[-1], tofile=file_path.split("/")[-1])
         # diff = "".join(diff)
-        diff = open("tmpdiff.txt", "r").read()
+        diff = open(f"tmpfspl/diff-{lang}-{filerepo}.txt", "r").read()
         diff = diff.replace('\r', '')
         adiff = cmt["hunk_diff"]
         adiff = adiff.replace('\r', '')
@@ -128,7 +137,7 @@ def main():
         if (NUMBER + 1) % 1000 == 0:
             conn.commit()
     conn.commit() 
-    os.system("rm tmpa.txt tmpb.txt tmpdiff.txt")
+    os.system(f"rm tmpfspl/a-{lang}-{filerepo}.txt tmpfspl/b-{lang}-{filerepo}.txt tmpfspl/diff-{lang}-{filerepo}.txt")
 
 
 main()

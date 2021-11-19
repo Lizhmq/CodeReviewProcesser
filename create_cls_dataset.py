@@ -57,39 +57,50 @@ def locate_kth_patch(hunkdiff, diff):
     count = diff[:idx].count("@@") // 2
     return count
 
-if not os.path.exists("tmpfscr"):
-    os.mkdir("tmpfscr")
 
+if not os.path.exists("tmpfscr2"):
+    os.mkdir("tmpfscr2")
+
+
+print(f"Start create cls dataset for {repo}")
 # extract one hunk diff
-print(f"Start create gen dataset for {repo}")
-pairs = []
+m = {}
+idxm = {}
 for dic in tqdm(filtered_dic):
     hunkdiff = dic["hunk_diff"]
     diff = dic["diff"]
-    open(f"tmpfscr/a-{lang}-{filerepo}.txt", "w").write(diff)
-    open(f"tmpfscr/b-{lang}-{filerepo}.txt", "w").write(hunkdiff)
     kth = locate_kth_patch(hunkdiff, diff)
-    # print(kth)
-    ret = os.system(f"filterdiff --hunks={kth} tmpfscr/a-{lang}-{filerepo}.txt > tmpfscr/c-{lang}-{filerepo}.txt")
-    if ret < 0:
-        continue
-    with open(f"tmpfscr/c-{lang}-{filerepo}.txt") as f:
-        for i in range(4):      # drop 4 lines
-            f.readline()
-        patch = f.read()
-    # open(f"old-{filerepo}.txt", "w").write(dic["newf"])
-    # open(f"revpatch-{filerepo}.txt", "w").write(patch)
-    # f = os.system(f"patch -R old-{filerepo}.txt revpatch-{filerepo}.txt")
-    # if f < 0:
-    #     continue
-    if len(patch) == 0:
-        continue
-    pairs.append({"patch": patch, "msg": dic["message"]})
-    # print(patch)
-    # print(dic["message"])
-os.system(f"rm tmpfscr/a-{lang}-{filerepo}.txt tmpfscr/b-{lang}-{filerepo}.txt tmpfscr/c-{lang}-{filerepo}.txt")
+    open(f"tmpfscr2/diff-{lang}-{filerepo}.txt", "w").write(diff)
+    hunk_cnts = diff.count("@@") // 2
+    for i in range(1, hunk_cnts + 1):
+        ret = os.system(f"filterdiff --hunks={i} tmpfscr2/diff-{lang}-{filerepo}.txt > tmpfscr2/hunk-{lang}-{filerepo}.txt")
+        if ret < 0:
+            continue
+        with open(f"tmpfscr2/hunk-{lang}-{filerepo}.txt") as f:
+            for __ in range(4):      # drop 4 lines
+                f.readline()
+            patch = f.read()
+        if len(patch) == 0:
+            continue
+        if i == kth:
+            y = 1
+        else:
+            y = 0
+        if patch in m:
+            if y == 1:
+                m[patch] = 1
+                idxm[patch] = i
+        else:
+            m[patch] = y
+            idxm[patch] = i
+print(sum(m.values()))
+os.system(f"rm tmpfscr2/diff-{lang}-{filerepo}.txt tmpfscr2/hunk-{lang}-{filerepo}.txt")
+    
+pairs = []
+for key, value in m.items():
+    pairs.append({"patch": key, "y": value, "idx": idxm[key]})
 
-with open(f"review_gen_{lang}_{repo.replace('/', '-')}.json", "w") as f:
+with open(f"review_cls_{lang}_{filerepo}.json", "w") as f:
     json.dump(pairs, f)
 
 
