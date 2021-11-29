@@ -15,16 +15,18 @@ parser.add_argument("--db", default=None, type=str, required=True)
 parser.add_argument("--repo", default=None, type=str, required=True)
 parser.add_argument("--lang", default=None, type=str, required=True)
 parser.add_argument("--token", default=None, type=str, required=True)
+parser.add_argument("--ends", default=None, type=str, required=True)
 args = parser.parse_args()
 
 
 def main():
     user, password = "FAREAST.v-zhuoli1", "passward"
     db, repo, lang, token = args.db, args.repo, args.lang, args.token
+    ends = args.ends
     filerepo = repo.replace("/", '-')
     conn, cur = get_cursor(db, user, password)
     comments = get_all(cur, "comment")
-    filtered_cmts = [cmt for cmt in comments if cmt["hunk_file"] and cmt["hunk_file"].endswith(".java")]
+    filtered_cmts = [cmt for cmt in comments if cmt["hunk_file"] and cmt["hunk_file"].endswith(ends)]
 
     if not os.path.exists("tmpfspl"):
         os.mkdir("tmpfspl")
@@ -39,6 +41,7 @@ def main():
         conn.commit()
     except Exception as e:
         logger.warning(str(e))
+        conn.close()
         conn, cur = get_cursor(db, user, password)
     succ = 0
     totallen = len(filtered_cmts)
@@ -130,6 +133,7 @@ def main():
             logger.warning(f"\tCrawling files for {NUMBER}-th comment succeeded.")
         except Exception as e:
             logger.warning(str(e))
+            conn.close()
             conn, cur = get_cursor(db, user, password)
             continue
         # time.sleep(0.8)
