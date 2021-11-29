@@ -128,8 +128,9 @@ def main():
             "diff": diff
         }
         try:
-            cur.execute(f"insert into comment_file_pair\
-                values (%(id)b, %(file_path)s, %(oldf)s, %(newf)s, %(diff)s);", data)
+            cur.execute(f"insert into comment_file_pair (id, file_path, oldf, newf, diff)\
+                values (%(id)b, %(file_path)s, %(oldf)s, %(newf)s, %(diff)s) \
+                on conflict (id) do update set file_path = excluded.file_path;", data)
             logger.warning(f"\tCrawling files for {NUMBER}-th comment succeeded.")
         except Exception as e:
             logger.warning(str(e))
