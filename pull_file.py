@@ -54,6 +54,7 @@ def main():
         file_path = cmt["hunk_file"]
         commit_id = cmt["commit_id"]
         commit_fb_id = cmt["commit_fallback_id"]
+
         if not commit_id:
             # logger.warning(f"\tEmpty commit_id for comment {cmt['id']}")
             if not commit_fb_id:
@@ -71,15 +72,25 @@ def main():
         # get current commit hash value
         hashv = commit["hash"]
         pullreqid = commit["pull_request_id"]
+
         # get all commits related to this request
-        commits = get_from_attr(cur, "commit", "pull_request_id", pullreqid)
-        commits = sorted(commits, key=lambda v: v["created_at"])
+        allcommits = get_from_attr(cur, "commit", "pull_request_id", pullreqid)
+        allcommits = sorted(allcommits, key=lambda v: v["created_at"])
         try:
-            assert len(commits) > 0
+            assert len(allcommits) > 0
         except:
             logger.warning(f"\tNone commits in PR {pullreqid}")
             continue
-        first_commit = commits[0]
+        comment_time = cmt['created_at']
+        # get the index of the commit that is closest to the comment
+        commitidx = 0
+        while commitidx + 1 < len(allcommits) and allcommits[commitidx + 1]["created_at"] < comment_time:
+            commitidx += 1
+        commit = allcommits[commitidx]
+        commit_id = commit["id"]
+        # get current commit hash value
+        hashv = commit["hash"]
+        first_commit = allcommits[0]
         first_hashv_b = first_commit["hash_parent"]
         # diff between current commit and first_commit in this PR
         try:
