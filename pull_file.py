@@ -83,10 +83,18 @@ def main():
             continue
         comment_time = cmt['created_at']
         # get the index of the commit that is closest to the comment
-        commitidx = 0
-        while commitidx + 1 < len(allcommits) and allcommits[commitidx + 1]["created_at"] < comment_time:
-            commitidx += 1
-        commit = allcommits[commitidx]
+        commentcommitid = cmt["commit_id"]
+        if not commentcommitid:
+            commitidx = 0
+            while commitidx + 1 < len(allcommits) and allcommits[commitidx + 1]["created_at"] < comment_time:
+                commitidx += 1
+            commit = allcommits[commitidx]
+        else:       # if there is commit id in comment, use it; do not have to use timeline
+            try:
+                commit = get_from_attr(cur, "commit", "id", commentcommitid)[0]
+            except:
+                logger.warning(f"\tcommit_id not found in comment {cmt['id']}")
+                continue
         commit_id = commit["id"]
         # get current commit hash value
         hashv = commit["hash"]
@@ -141,7 +149,8 @@ def main():
         try:
             cur.execute(f"insert into comment_file_pair (id, file_path, oldf, newf, diff)\
                 values (%(id)b, %(file_path)s, %(oldf)s, %(newf)s, %(diff)s) \
-                on conflict (id) do update set file_path = excluded.file_path;", data)
+                on conflict (id) do update set file_path = excluded.file_path, \
+                oldf = excluded.oldf, newf = excluded.newf, diff = excluded.diff;", data)
             logger.warning(f"\tCrawling files for {NUMBER}-th comment succeeded.")
         except Exception as e:
             logger.warning(str(e))
