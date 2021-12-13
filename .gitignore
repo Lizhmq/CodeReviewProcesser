@@ -3,3 +3,5 @@
 *.rej
 *.json
 __pycache__
+reviews*
+logs*
