@@ -28,8 +28,8 @@ def main():
     comments = get_all(cur, "comment")
     filtered_cmts = [cmt for cmt in comments if cmt["hunk_file"] and cmt["hunk_file"].endswith(ends)]
 
-    if not os.path.exists("tmpfspl"):
-        os.mkdir("tmpfspl")
+    if not os.path.exists("/home/v-zhuoli1"):
+        os.mkdir("/home/v-zhuoli1")
 
     headers = {"Authorization": f"token {token}"}
     not_found = ['400: Invalid request', '404: Not Found']
@@ -116,13 +116,10 @@ def main():
         except:
             logger.warning(f"\tError during pull file {oldurl} ++ {newurl}")
             continue
-        open(f"tmpfspl/a-{lang}-{filerepo}.txt", "w").write(old_contents)
-        open(f"tmpfspl/b-{lang}-{filerepo}.txt", "w").write(new_contents)
-        os.system(f"git diff --no-index tmpfspl/a-{lang}-{filerepo}.txt tmpfspl/b-{lang}-{filerepo}.txt > tmpfspl/diff-{lang}-{filerepo}.txt")
-        # diff = difflib.unified_diff(old_contents.splitlines(keepends=True), 
-        #         new_contents.splitlines(keepends=True), fromfile=file_path.split("/")[-1], tofile=file_path.split("/")[-1])
-        # diff = "".join(diff)
-        diff = open(f"tmpfspl/diff-{lang}-{filerepo}.txt", "r").read()
+        open(f"/home/v-zhuoli1/a-{lang}-{filerepo}.txt", "w").write(old_contents)
+        open(f"/home/v-zhuoli1/b-{lang}-{filerepo}.txt", "w").write(new_contents)
+        os.system(f"git diff --no-index /home/v-zhuoli1/a-{lang}-{filerepo}.txt /home/v-zhuoli1/b-{lang}-{filerepo}.txt > /home/v-zhuoli1/diff-{lang}-{filerepo}.txt")
+        diff = open(f"/home/v-zhuoli1/diff-{lang}-{filerepo}.txt", "r").read()
         diff = diff.replace('\r', '')
         adiff = cmt["hunk_diff"]
         adiff = adiff.replace('\r', '')
@@ -144,7 +141,8 @@ def main():
             "file_path": file_path,
             "oldf": old_contents,
             "newf": new_contents,
-            "diff": diff
+            "diff": diff,
+            "repo": repo
         }
         try:
             cur.execute(f"insert into comment_file_pair (id, file_path, oldf, newf, diff)\
@@ -162,7 +160,7 @@ def main():
         if (NUMBER + 1) % 1000 == 0:
             conn.commit()
     conn.commit() 
-    os.system(f"rm tmpfspl/a-{lang}-{filerepo}.txt tmpfspl/b-{lang}-{filerepo}.txt tmpfspl/diff-{lang}-{filerepo}.txt")
+    os.system(f"rm /home/v-zhuoli1/a-{lang}-{filerepo}.txt /home/v-zhuoli1/b-{lang}-{filerepo}.txt /home/v-zhuoli1/diff-{lang}-{filerepo}.txt")
 
 
 main()

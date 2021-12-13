@@ -77,6 +77,7 @@ for dic in tqdm(filtered_dic):
     hunkdiff = dic["hunk_diff"]
     diff = dic["diff"]
     oldf = dic["oldf"]
+    cmtid = dic["id"]
     msg = dic["message"]
     open(f"tmpfscr/a-{lang}-{filerepo}.txt", "w").write(diff)
     open(f"tmpfscr/b-{lang}-{filerepo}.txt", "w").write(hunkdiff)
@@ -100,14 +101,14 @@ for dic in tqdm(filtered_dic):
     if key in mmap:
         continue
     else:
-        mmap[key] = (oldf, patch, msg)
+        mmap[key] = (oldf, patch, msg, cmtid)
 
 os.system(f"rm tmpfscr/a-{lang}-{filerepo}.txt tmpfscr/b-{lang}-{filerepo}.txt tmpfscr/c-{lang}-{filerepo}.txt")
 
 pairs = []
 for key, value in mmap.items():
-    oldf, patch, msg = value
-    pairs.append({"oldf": oldf, "patch": patch, "msg": msg})
+    oldf, patch, msg, cmtid = value
+    pairs.append({"oldf": oldf, "patch": patch, "msg": msg, "id": cmtid})
 with open(f"reviews/review_gen_{lang}_{repo.replace('/', '-')}.json", "w") as f:
     json.dump(pairs, f)
 

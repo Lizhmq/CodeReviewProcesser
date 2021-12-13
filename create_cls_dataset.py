@@ -79,6 +79,7 @@ for dic in tqdm(filtered_dic):
     hunkdiff = dic["hunk_diff"]
     diff = dic["diff"]
     oldf = dic["oldf"]
+    cmtid = dic["id"]
     kth = locate_kth_patch(hunkdiff, diff)
     open(f"tmpfscr2/diff-{lang}-{filerepo}.txt", "w").write(diff)
     hunk_cnts = diff.count("@@") // 2
@@ -100,16 +101,16 @@ for dic in tqdm(filtered_dic):
         if key in mmap:
             stored_y, stored_patch, stored_file, stored_idx = mmap[key]
             if y == 1 and stored_y == 0:
-                mmap[key] = (y, patch, oldf, i)
+                mmap[key] = (y, patch, oldf, i, cmtid)
         else:
-            mmap[key] = (y, patch, oldf, i)
+            mmap[key] = (y, patch, oldf, i, cmtid)
 # print(sum(m.values()))
 os.system(f"rm tmpfscr2/diff-{lang}-{filerepo}.txt tmpfscr2/hunk-{lang}-{filerepo}.txt")
     
 pairs = []
 for key, value in mmap.items():
-    y, patch, oldf, idx = value
-    pairs.append({"patch": key, "y": value, "oldf": oldf, "idx": idx})
+    y, patch, oldf, idx, cmtid = value
+    pairs.append({"patch": patch, "y": y, "oldf": oldf, "idx": idx, "id": cmtid})
 
 with open(f"reviews/review_cls_{lang}_{filerepo}.json", "w") as f:
     json.dump(pairs, f)
