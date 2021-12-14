@@ -18,10 +18,13 @@ parser.add_argument("--db", default=None, type=str, required=True)
 parser.add_argument("--repo", default=None, type=str, required=True)
 parser.add_argument("--lang", default=None, type=str, required=True)
 parser.add_argument("--token", default=None, type=str, required=True)
+parser.add_argument("--tmppath", default=None, type=str, required=True)
+parser.add_argument("--outpath", default=None, type=str, required=True)
 args = parser.parse_args()
 
 user, password = "FAREAST.v-zhuoli1", "passward"
 db, repo, lang, token = args.db, args.repo, args.lang, args.token
+tmppath, outpath = args.tmppath, args.outpath
 filerepo = repo.replace("/", '-')
 token = args.token
 
@@ -67,8 +70,8 @@ def get_key_from_patch(s):
     return s[idx:]
 
 
-if not os.path.exists("/home/v-zhuoli1"):
-    os.mkdir("/home/v-zhuoli1")
+if not os.path.exists(f"{tmppath}"):
+    os.mkdir(f"{tmppath}")
 
 
 print(f"Start create cls dataset for {repo}")
@@ -81,13 +84,13 @@ for dic in tqdm(filtered_dic):
     oldf = dic["oldf"]
     cmtid = dic["id"]
     kth = locate_kth_patch(hunkdiff, diff)
-    open(f"/home/v-zhuoli1/diff-{lang}-{filerepo}.txt", "w").write(diff)
+    open(f"{tmppath}/diff-{lang}-{filerepo}.txt", "w").write(diff)
     hunk_cnts = diff.count("@@") // 2
     for i in range(1, hunk_cnts + 1):
-        ret = os.system(f"filterdiff --hunks={i} /home/v-zhuoli1/diff-{lang}-{filerepo}.txt > /home/v-zhuoli1/hunk-{lang}-{filerepo}.txt")
+        ret = os.system(f"filterdiff --hunks={i} {tmppath}/diff-{lang}-{filerepo}.txt > {tmppath}/hunk-{lang}-{filerepo}.txt")
         if ret < 0:
             continue
-        with open(f"/home/v-zhuoli1/hunk-{lang}-{filerepo}.txt") as f:
+        with open(f"{tmppath}/hunk-{lang}-{filerepo}.txt") as f:
             for __ in range(4):      # drop 4 lines
                 f.readline()
             patch = f.read()
@@ -105,14 +108,14 @@ for dic in tqdm(filtered_dic):
         else:
             mmap[key] = (y, patch, oldf, i, cmtid)
 # print(sum(m.values()))
-os.system(f"rm /home/v-zhuoli1/diff-{lang}-{filerepo}.txt /home/v-zhuoli1/hunk-{lang}-{filerepo}.txt")
+os.system(f"rm {tmppath}/diff-{lang}-{filerepo}.txt {tmppath}/hunk-{lang}-{filerepo}.txt")
     
 pairs = []
 for key, value in mmap.items():
     y, patch, oldf, idx, cmtid = value
     pairs.append({"patch": patch, "y": y, "oldf": oldf, "idx": idx, "id": cmtid})
 
-with open(f"reviews/review_cls_{lang}_{filerepo}.json", "w") as f:
+with open(f"{outpath}/review_cls_{lang}_{filerepo}.json", "w") as f:
     json.dump(pairs, f)
 
 

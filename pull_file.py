@@ -16,6 +16,7 @@ parser.add_argument("--repo", default=None, type=str, required=True)
 parser.add_argument("--lang", default=None, type=str, required=True)
 parser.add_argument("--token", default=None, type=str, required=True)
 parser.add_argument("--ends", default=None, type=str, required=True)
+parser.add_argument("--tmppath", default=None, type=str, required=True)
 args = parser.parse_args()
 
 
@@ -23,13 +24,14 @@ def main():
     user, password = "FAREAST.v-zhuoli1", "passward"
     db, repo, lang, token = args.db, args.repo, args.lang, args.token
     ends = args.ends
+    tmppath = args.tmppath
     filerepo = repo.replace("/", '-')
     conn, cur = get_cursor(db, user, password)
     comments = get_all(cur, "comment")
     filtered_cmts = [cmt for cmt in comments if cmt["hunk_file"] and cmt["hunk_file"].endswith(ends)]
 
-    if not os.path.exists("/home/v-zhuoli1"):
-        os.mkdir("/home/v-zhuoli1")
+    if not os.path.exists(f"{tmppath}"):
+        os.mkdir(f"{tmppath}")
 
     headers = {"Authorization": f"token {token}"}
     not_found = ['400: Invalid request', '404: Not Found']
@@ -116,10 +118,10 @@ def main():
         except:
             logger.warning(f"\tError during pull file {oldurl} ++ {newurl}")
             continue
-        open(f"/home/v-zhuoli1/a-{lang}-{filerepo}.txt", "w").write(old_contents)
-        open(f"/home/v-zhuoli1/b-{lang}-{filerepo}.txt", "w").write(new_contents)
-        os.system(f"git diff --no-index /home/v-zhuoli1/a-{lang}-{filerepo}.txt /home/v-zhuoli1/b-{lang}-{filerepo}.txt > /home/v-zhuoli1/diff-{lang}-{filerepo}.txt")
-        diff = open(f"/home/v-zhuoli1/diff-{lang}-{filerepo}.txt", "r").read()
+        open(f"{tmppath}/a-{lang}-{filerepo}.txt", "w").write(old_contents)
+        open(f"{tmppath}/b-{lang}-{filerepo}.txt", "w").write(new_contents)
+        os.system(f"git diff --no-index {tmppath}/a-{lang}-{filerepo}.txt {tmppath}/b-{lang}-{filerepo}.txt > {tmppath}/diff-{lang}-{filerepo}.txt")
+        diff = open(f"{tmppath}/diff-{lang}-{filerepo}.txt", "r").read()
         diff = diff.replace('\r', '')
         adiff = cmt["hunk_diff"]
         adiff = adiff.replace('\r', '')
@@ -160,7 +162,7 @@ def main():
         if (NUMBER + 1) % 1000 == 0:
             conn.commit()
     conn.commit() 
-    os.system(f"rm /home/v-zhuoli1/a-{lang}-{filerepo}.txt /home/v-zhuoli1/b-{lang}-{filerepo}.txt /home/v-zhuoli1/diff-{lang}-{filerepo}.txt")
+    os.system(f"rm {tmppath}/a-{lang}-{filerepo}.txt {tmppath}/b-{lang}-{filerepo}.txt {tmppath}/diff-{lang}-{filerepo}.txt")
 
 
 main()
