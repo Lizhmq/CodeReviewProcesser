@@ -1,4 +1,11 @@
 import psycopg
+import json
+
+
+def write_jsonl(jss, filename):
+    with open(filename, "w") as f:
+        for js in jss:
+            f.write(json.dumps(js) + "\n")
 
 
 def get_cursor(db, user, password):

@@ -5,7 +5,7 @@ import pprint
 import argparse
 import requests
 from tqdm import tqdm
-from utils import get_cursor, get_all, get_from_attr, gen_dic, findkth
+from utils import get_cursor, write_jsonl, gen_dic, findkth
 pprint = pprint.PrettyPrinter(indent=4).pprint
 
 FORMAT = '%(asctime)-15s %(message)s'
@@ -115,8 +115,4 @@ for key, value in mmap.items():
     y, patch, oldf, idx, cmtid = value
     pairs.append({"patch": patch, "y": y, "oldf": oldf, "idx": idx, "id": cmtid})
 
-with open(f"{outpath}/review_cls_{lang}_{filerepo}.json", "w") as f:
-    json.dump(pairs, f)
-
-
-
+write_jsonl(pairs, f"{outpath}/review_cls_{lang}_{filerepo}.jsonl")

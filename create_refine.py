@@ -6,7 +6,7 @@ import requests
 import json
 import argparse
 from tqdm import tqdm
-from utils import get_cursor, get_all, get_from_attr, findkth
+from utils import get_cursor, get_all, get_from_attr, write_jsonl
 pprint = pprint.PrettyPrinter(indent=4).pprint
 
 FORMAT = '%(asctime)-15s %(message)s'
@@ -151,13 +151,9 @@ def main():
             data.append(result)
             logger.warning(f"Succeeded.")
 
-# multiple comments?
+    # multiple comments?
 
-
-    with open(f"{outpath}/testo_{lang}_{repo.replace('/', '-')}.json", "w") as f:
-        json.dump(data, f)
-
-
+    write_jsonl(data, f"{outpath}/testo_{lang}_{repo.replace('/', '-')}.jsonl")
     os.system(f"rm {tmppath}/a-{lang}-{filerepo}.txt {tmppath}/b-{lang}-{filerepo}.txt {tmppath}/diff-{lang}-{filerepo}.txt {tmppath}/hunk-{lang}-{filerepo}.txt")
 
 
