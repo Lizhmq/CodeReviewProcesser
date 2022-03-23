@@ -6,7 +6,7 @@ import requests
 import json
 import argparse
 from tqdm import tqdm
-from utils import get_cursor, get_all, get_from_attr, write_jsonl
+from utils import get_cursor, get_all, get_from_attr, write_jsonl, findkth
 pprint = pprint.PrettyPrinter(indent=4).pprint
 
 FORMAT = '%(asctime)-15s %(message)s'
@@ -23,9 +23,26 @@ parser.add_argument("--outpath", default=None, type=str, required=True)
 args = parser.parse_args()
 
 
+def locate_kth_patch_reverse(hunkdiff, diff):
+    hunkdiff = hunkdiff[::-1]
+    adiff = hunkdiff.replace('\r', '')
+    newlineidx = adiff.find("\n")
+    if newlineidx == -1:
+        newlineidx = 0
+    # only check first 10 lines
+    truncidx = findkth(adiff, "\n", 10)    # if diff hunk less than 10 lines, it's ok to be -1
+    bdiff = adiff[newlineidx:truncidx]
+    bdiff = bdiff[::-1]
+    idx = diff.find(bdiff)
+    count = diff[:idx].count("@@") // 2
+    return count
+
+
+
 def main():
     user, password = "FAREAST.v-zhuoli1", "passward"
     db, repo, lang, token = args.db, args.repo, args.lang, args.token
+    logger.warning(f"Start repo: {db}.")
     tmppath, outpath = args.tmppath, args.outpath
     ends = args.ends
     filerepo = repo.replace("/", '-')
@@ -40,7 +57,7 @@ def main():
     data = []
 
     FULLPRS = get_all(cur, "pull_request")
-    for pr in tqdm(FULLPRS):
+    for pr in FULLPRS:
         prid = pr["id"]
         allcmts = get_from_attr(cur, "comment", "pull_request_id", prid)
         allcmts = [cmt for cmt in allcmts if cmt["hunk_file"] and cmt["hunk_file"].endswith(ends)]
@@ -51,17 +68,19 @@ def main():
             continue
         for cmtidx in range(len(allcmts)):
             patchnum = 0
-
             comment = allcmts[cmtidx]
             comment_time = comment['created_at']
             file_path = comment["hunk_file"]
             commit_id = comment["commit_id"]
             comment_id = comment["id"]
+            commit_fb_id = comment["commit_fallback_id"]
             author = comment["author"]
             allcommits = [commit for commit in allcommits if commit["author"] != author]
             # comment and commit author are different
             if len(allcommits) == 0:
                 continue
+            if not commit_id and commit_fb_id:
+                commit_id = commit_fb_id
             if commit_id:
                 firstidx = 0
                 while firstidx < len(allcommits) and allcommits[firstidx]["id"] != commit_id:
@@ -69,29 +88,69 @@ def main():
                 if firstidx < len(allcommits):
                     commit = allcommits[firstidx]
                 else:
-                    logger.warning(f"{prid} {file_path} {comment_id} not found")
+                    continue
+                    # logger.warning(f"{prid} {file_path} {comment_id} not found")
             else:
-                # get the index of the commit that is closest to the comment
-                firstidx = 0
-                while firstidx + 1 < len(allcommits) and allcommits[firstidx + 1]["created_at"] < comment_time:
-                    firstidx += 1
-                commit = allcommits[firstidx]
+                continue
+            # find old patch
+            first_commit = allcommits[0]
+            first_hashv_b = first_commit["hash_parent"]
             hashv = commit["hash"]
-            old_contents = "LINKO STARTO"
+            try:
+                prevurl = f"https://raw.githubusercontent.com/{repo}/{first_hashv_b}/{file_path}"
+                oldurl = f"https://raw.githubusercontent.com/{repo}/{hashv}/{file_path}"
+                prev_contents = requests.get(prevurl, headers=headers).text
+                old_contents = requests.get(oldurl, headers=headers).text
+                if prev_contents in not_found:
+                    prev_contents = ""
+                if old_contents in not_found:
+                    continue
+            except Exception as e:
+                continue
+            # open(f"{tmppath}/a-{lang}-{filerepo}.txt", "w").write(prev_contents)
+            open(f"{tmppath}/b-{lang}-{filerepo}.txt", "w").write(old_contents)
+            # os.system(f"git diff --no-index {tmppath}/a-{lang}-{filerepo}.txt {tmppath}/b-{lang}-{filerepo}.txt > {tmppath}/diff-{lang}-{filerepo}.txt")
+            # diff = open(f"{tmppath}/diff-{lang}-{filerepo}.txt", "r").read()
+            # diff = diff.replace('\r', '')
+            # adiff = comment["hunk_diff"]
+            # adiff = adiff.replace('\r', '')
+            # newlineidx = adiff.find("\n")
+            # if newlineidx == -1:
+            #     newlineidx = 0
+            # # only check first 10 lines
+            # truncidx = findkth(adiff, "\n", 10)     # if diff hunk less than 10 lines, it's ok to be -1
+            # bdiff = adiff[newlineidx:truncidx]
+            # if comment["message"] == 'should be "bytesWritten"':
+            #     print(adiff)
+            #     with open("diff.txt", "w") as f:
+            #         f.write(diff)
+            #     with open("bdiff.txt", "w") as f:
+            #         f.write(bdiff)
+            # if diff.find(bdiff) < 0:
+            #     continue
+            # kth = locate_kth_patch_reverse(bdiff, diff)
+            # if comment["message"] == 'should be "bytesWritten"':
+            #     print(kth)
+            # ret = os.system(f"filterdiff --hunks={kth} {tmppath}/diff-{lang}-{filerepo}.txt > {tmppath}/c-{lang}-{filerepo}.txt")
+            # if ret < 0:
+            #     continue
+            # with open(f"{tmppath}/c-{lang}-{filerepo}.txt") as f:
+            #     for _ in range(4):      # drop 4 lines
+            #         f.readline()
+            #     patch = f.read()
+            # if len(patch) == 0:
+            #     continue
+            # The first commit after the comment
+            secondidx = firstidx + 1
+            while secondidx < len(allcommits) and allcommits[secondidx]["created_at"] < comment_time:
+                secondidx += 1
             cmtgot = False
-            for nextidx in range(firstidx + 1, len(allcommits)):
+            for nextidx in range(secondidx, min(len(allcommits), secondidx + 10)):
                 nexthashv = allcommits[nextidx]["hash"]
                 try:
-                    if old_contents == "LINKO STARTO":
-                        oldurl = f"https://raw.githubusercontent.com/{repo}/{hashv}/{file_path}"
-                        old_contents = requests.get(oldurl, headers=headers).text
                     newurl = f"https://raw.githubusercontent.com/{repo}/{nexthashv}/{file_path}"
                     new_contents = requests.get(newurl, headers=headers).text
-                    if old_contents in not_found or new_contents in not_found:
-                        if old_contents in not_found:
-                            logger.warning(f"{oldurl} not found", end=" ")
-                        if new_contents in not_found:
-                            logger.warning(f"{newurl} not found")
+                    if new_contents in not_found:
                         continue
                 except:
                     logger.warning("Error during fetching files.")
@@ -135,7 +194,7 @@ def main():
                 if cmtgot:
                     break
             if not cmtgot:    # not aligned in this commit
-                logger.warning(f"{prid} {file_path} {comment_id} not found")
+                # logger.warning(f"{prid} {file_path} {comment_id} not found")
                 continue
             ret = os.system(f"filterdiff --hunks={patchnum+1} {tmppath}/diff-{lang}-{filerepo}.txt > {tmppath}/hunk-{lang}-{filerepo}.txt")
             if ret < 0:
@@ -145,15 +204,21 @@ def main():
                 for __ in range(4):      # drop 4 lines
                     f.readline()
                 hunk = f.read()
-            result = {"oldf": old_contents, "hunk": hunk, "comment": comment["message"], "ids": [comment["id"], commit["hash"], allcommits[nextidx]["hash"]]}
+            result = {"old_hunk": comment["hunk_diff"], "oldf": old_contents, "hunk": hunk, "comment": comment["message"], "ids": [comment["id"], commit["hash"], allcommits[nextidx]["hash"]]}
             result["repo"] = repo
             result["ghid"] = pr["gh_number"]
             data.append(result)
-            logger.warning(f"Succeeded.")
-
-    # multiple comments?
-
-    write_jsonl(data, f"{outpath}/testo_{lang}_{repo.replace('/', '-')}.jsonl")
+            # logger.warning(f"Succeeded.")
+    # What if multiple comments for the same change?
+    #  - use oldf + hunk to deduplicate
+    dedup_dict = {}
+    for dic in data:
+        # key = dic["oldf"] + "[SEP]" + dic["hunk"]
+        key = dic["old_hunk"]
+        if key not in dedup_dict:
+            dedup_dict[key] = dic
+    data = list(dedup_dict.values())    
+    write_jsonl(data, f"{outpath}/review_ref_{lang}_{repo.replace('/', '-')}.jsonl")
     os.system(f"rm {tmppath}/a-{lang}-{filerepo}.txt {tmppath}/b-{lang}-{filerepo}.txt {tmppath}/diff-{lang}-{filerepo}.txt {tmppath}/hunk-{lang}-{filerepo}.txt")
 
 

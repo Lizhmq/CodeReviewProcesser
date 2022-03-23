@@ -7,6 +7,12 @@ def write_jsonl(jss, filename):
         for js in jss:
             f.write(json.dumps(js) + "\n")
 
+def read_jsonl(filename):
+    ret = []
+    with open(filename, "r") as f:
+        for line in f:
+            ret.append(json.loads(line))
+    return ret
 
 def get_cursor(db, user, password):
     conn = psycopg.connect(f"dbname={db} user={user} password={password}")

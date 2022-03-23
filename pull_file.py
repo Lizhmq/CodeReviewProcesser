@@ -51,7 +51,7 @@ def main():
     logger.warning(f"Start to crawl files for {totallen} comments.")
     # CRAWL Files
     for NUMBER, cmt in enumerate(filtered_cmts):
-        logger.warning(f"{NUMBER}-th comment.")
+        # logger.warning(f"{NUMBER}-th comment.")
         tryfbid = False
         file_path = cmt["hunk_file"]
         commit_id = cmt["commit_id"]
@@ -60,16 +60,16 @@ def main():
         if not commit_id:
             # logger.warning(f"\tEmpty commit_id for comment {cmt['id']}")
             if not commit_fb_id:
-                logger.warning(f"\tEmpty commit_fallback_id for comment {cmt['id']}")
+                # logger.warning(f"\tEmpty commit_fallback_id for comment {cmt['id']}")
                 continue
             else:
                 tryfbid = True
-                logger.warning(f"\tTry with commit_fallback_id")
+                # logger.warning(f"\tTry with commit_fallback_id")
                 commit_id = commit_fb_id
         try:
             commit = get_from_attr(cur, "commit", "id", commit_id)[0]
         except:
-            logger.warning(f"\tcommit_id not found in comment {cmt['id']}")
+            # logger.warning(f"\tcommit_id not found in comment {cmt['id']}")
             continue
         # get current commit hash value
         hashv = commit["hash"]
@@ -81,7 +81,7 @@ def main():
         try:
             assert len(allcommits) > 0
         except:
-            logger.warning(f"\tNone commits in PR {pullreqid}")
+            # logger.warning(f"\tNone commits in PR {pullreqid}")
             continue
         comment_time = cmt['created_at']
         # get the index of the commit that is closest to the comment
@@ -95,7 +95,7 @@ def main():
             try:
                 commit = get_from_attr(cur, "commit", "id", commentcommitid)[0]
             except:
-                logger.warning(f"\tcommit_id not found in comment {cmt['id']}")
+                # logger.warning(f"\tcommit_id not found in comment {cmt['id']}")
                 continue
         commit_id = commit["id"]
         # get current commit hash value
@@ -113,10 +113,10 @@ def main():
                 # continue
                 old_contents = ""
             if new_contents in not_found:
-                logger.warning(f"\tEmpty file with newurl {newurl}, passing comment {cmt['id']}")
+                # logger.warning(f"\tEmpty file with newurl {newurl}, passing comment {cmt['id']}")
                 continue
         except:
-            logger.warning(f"\tError during pull file {oldurl} ++ {newurl}")
+            # logger.warning(f"\tError during pull file {oldurl} ++ {newurl}")
             continue
         open(f"{tmppath}/a-{lang}-{filerepo}.txt", "w").write(old_contents)
         open(f"{tmppath}/b-{lang}-{filerepo}.txt", "w").write(new_contents)
@@ -132,10 +132,10 @@ def main():
         truncidx = findkth(adiff, "\n", 10)     # if diff hunk less than 10 lines, it's ok to be -1
         bdiff = adiff[newlineidx:truncidx]
         if diff.find(bdiff) < 0:
-            if not tryfbid:
-                logger.warning(f"\tNot matched for comment {cmt['id']}")
-            else:
-                logger.warning(f"\tTry fallback_id fail.")
+            # if not tryfbid:
+            #     logger.warning(f"\tNot matched for comment {cmt['id']}")
+            # else:
+            #     logger.warning(f"\tTry fallback_id fail.")
             continue
         logger.info(f"Insert value to table comment_file_pair.")
         data = {
@@ -151,9 +151,9 @@ def main():
                 values (%(id)b, %(file_path)s, %(oldf)s, %(newf)s, %(diff)s) \
                 on conflict (id) do update set file_path = excluded.file_path, \
                 oldf = excluded.oldf, newf = excluded.newf, diff = excluded.diff;", data)
-            logger.warning(f"\tCrawling files for {NUMBER}-th comment succeeded.")
+            # logger.warning(f"\tCrawling files for {NUMBER}-th comment succeeded.")
         except Exception as e:
-            logger.warning(str(e))
+            # logger.warning(str(e))
             conn.close()
             conn, cur = get_cursor(db, user, password)
             continue

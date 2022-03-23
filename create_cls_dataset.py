@@ -78,11 +78,15 @@ print(f"Start create cls dataset for {repo}")
 # extract one hunk diff
 
 mmap = {}
-for dic in tqdm(filtered_dic):
+for dic in filtered_dic:
     hunkdiff = dic["hunk_diff"]
     diff = dic["diff"]
     oldf = dic["oldf"]
     cmtid = dic["id"]
+    if "message" not in dic:
+        msg = ""
+    else:
+        msg = dic["message"]
     kth = locate_kth_patch(hunkdiff, diff)
     open(f"{tmppath}/diff-{lang}-{filerepo}.txt", "w").write(diff)
     hunk_cnts = diff.count("@@") // 2
@@ -100,19 +104,20 @@ for dic in tqdm(filtered_dic):
             y = 1
         else:
             y = 0
+            msg = ""
         key = get_key_from_patch(patch)
         if key in mmap:
-            stored_y, stored_patch, stored_file, stored_idx, stored_cmtid = mmap[key]
+            stored_y, stored_patch, stored_file, stored_idx, stored_cmtid, stored_msg = mmap[key]
             if y == 1 and stored_y == 0:
-                mmap[key] = (y, patch, oldf, i, cmtid)
+                mmap[key] = (y, patch, oldf, i, cmtid, msg)
         else:
-            mmap[key] = (y, patch, oldf, i, cmtid)
+            mmap[key] = (y, patch, oldf, i, cmtid, msg)
 # print(sum(m.values()))
 os.system(f"rm {tmppath}/diff-{lang}-{filerepo}.txt {tmppath}/hunk-{lang}-{filerepo}.txt")
     
 pairs = []
 for key, value in mmap.items():
-    y, patch, oldf, idx, cmtid = value
-    pairs.append({"patch": patch, "y": y, "oldf": oldf, "idx": idx, "id": cmtid})
+    y, patch, oldf, idx, cmtid, msg = value
+    pairs.append({"patch": patch, "y": y, "oldf": oldf, "idx": idx, "id": cmtid, "msg": msg})
 
 write_jsonl(pairs, f"{outpath}/review_cls_{lang}_{filerepo}.jsonl")

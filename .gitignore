@@ -5,3 +5,5 @@
 __pycache__
 reviews*
 logs*
+refs/*
+testrefs/*

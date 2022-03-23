@@ -76,7 +76,7 @@ if not os.path.exists(f"{tmppath}"):
 # extract one hunk diff
 mmap = {}
 print(f"Start create gen dataset for {repo}")
-for dic in tqdm(filtered_dic):
+for dic in filtered_dic:
     hunkdiff = dic["hunk_diff"]
     diff = dic["diff"]
     oldf = dic["oldf"]
