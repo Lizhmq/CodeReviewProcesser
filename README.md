@@ -4,6 +4,7 @@ This repo is created to process the pull request database (refer to [ETCR](https
 
 Run:
 ```bash
+cd process
 bash process.sh
 ```
 
@@ -20,5 +21,5 @@ Refer to our paper: [CodeReviewer](https://arxiv.org/abs/2203.09095) for more de
 
 ## Source code
 
-* pull_file.py: query GitHub api for source code related to the comments in database.
-* create_xx_dataset.py: create a specific dataset.
+* process/pull_file.py: query GitHub api for source code related to the comments in database.
+* process/create_xx_dataset.py: create a specific dataset.
