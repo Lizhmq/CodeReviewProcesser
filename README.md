@@ -23,3 +23,10 @@ Refer to our paper: [CodeReviewer](https://arxiv.org/abs/2203.09095) for more de
 
 * process/pull_file.py: query GitHub api for source code related to the comments in database.
 * process/create_xx_dataset.py: create a specific dataset.
+
+
+## Postprocess
+
+Source code in directory `postprocess`.
+
+To clean the dataset and distribute to `train/valid/test` set.

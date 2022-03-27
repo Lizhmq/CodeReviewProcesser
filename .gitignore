@@ -7,3 +7,6 @@ reviews*
 logs*
 refs/*
 testrefs/*
+postprocess/finalized_model.sav
+
+!postprocess/stopwords.txt
