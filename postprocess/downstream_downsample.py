@@ -21,7 +21,7 @@ def ds_data(inpath, outpath):
     with open(inpath, encoding="utf-8") as f:
         for line in f:
             dic = json.loads(line)
-            # if len(dic["patch"].split("\n")) > 20:
+            # if len(dic["patch"].split("\n")) > 20:            # uncomment these when you process msg data
             #     continue
             if dic["y"] == 0 and dic["msg"] == "":
                 if random.random() < balance_ratio + 0.1:   # add 0.1 to get more no msg data

@@ -89,7 +89,6 @@ def main():
                     commit = allcommits[firstidx]
                 else:
                     continue
-                    # logger.warning(f"{prid} {file_path} {comment_id} not found")
             else:
                 continue
             # find old patch
@@ -107,40 +106,7 @@ def main():
                     continue
             except Exception as e:
                 continue
-            # open(f"{tmppath}/a-{lang}-{filerepo}.txt", "w").write(prev_contents)
             open(f"{tmppath}/b-{lang}-{filerepo}.txt", "w").write(old_contents)
-            # os.system(f"git diff --no-index {tmppath}/a-{lang}-{filerepo}.txt {tmppath}/b-{lang}-{filerepo}.txt > {tmppath}/diff-{lang}-{filerepo}.txt")
-            # diff = open(f"{tmppath}/diff-{lang}-{filerepo}.txt", "r").read()
-            # diff = diff.replace('\r', '')
-            # adiff = comment["hunk_diff"]
-            # adiff = adiff.replace('\r', '')
-            # newlineidx = adiff.find("\n")
-            # if newlineidx == -1:
-            #     newlineidx = 0
-            # # only check first 10 lines
-            # truncidx = findkth(adiff, "\n", 10)     # if diff hunk less than 10 lines, it's ok to be -1
-            # bdiff = adiff[newlineidx:truncidx]
-            # if comment["message"] == 'should be "bytesWritten"':
-            #     print(adiff)
-            #     with open("diff.txt", "w") as f:
-            #         f.write(diff)
-            #     with open("bdiff.txt", "w") as f:
-            #         f.write(bdiff)
-            # if diff.find(bdiff) < 0:
-            #     continue
-            # kth = locate_kth_patch_reverse(bdiff, diff)
-            # if comment["message"] == 'should be "bytesWritten"':
-            #     print(kth)
-            # ret = os.system(f"filterdiff --hunks={kth} {tmppath}/diff-{lang}-{filerepo}.txt > {tmppath}/c-{lang}-{filerepo}.txt")
-            # if ret < 0:
-            #     continue
-            # with open(f"{tmppath}/c-{lang}-{filerepo}.txt") as f:
-            #     for _ in range(4):      # drop 4 lines
-            #         f.readline()
-            #     patch = f.read()
-            # if len(patch) == 0:
-            #     continue
-            # The first commit after the comment
             secondidx = firstidx + 1
             while secondidx < len(allcommits) and allcommits[secondidx]["created_at"] < comment_time:
                 secondidx += 1
@@ -173,20 +139,14 @@ def main():
                 line = lines[0]
                 cmtstart_line = int(line[2])
                 cmtend_line = cmtstart_line + int(line[3]) - 1
-                # logger.warning(diff)
-                # logger.warning(adiff)
-                # break
                 lines2 = regex.findall(diff)
                 if len(lines2) <= 0:
-                    # logger.warning(f"Empty diff.")
                     continue
                 patchnum = 0
                 while patchnum < len(lines2):
                     line = lines2[patchnum]
                     cmmitstart_line = int(line[0])
                     cmmitend_line = cmmitstart_line + int(line[1]) - 1
-                    # logger.warning(set(range(cmtstart_line, cmtend_line + 1)))
-                    # logger.warning(set(range(cmmitstart_line, cmmitend_line + 1)))
                     if set(range(cmtstart_line, cmtend_line + 1)) & set(range(cmmitstart_line, cmmitend_line + 1)):
                         cmtgot = True
                         break
@@ -194,7 +154,6 @@ def main():
                 if cmtgot:
                     break
             if not cmtgot:    # not aligned in this commit
-                # logger.warning(f"{prid} {file_path} {comment_id} not found")
                 continue
             ret = os.system(f"filterdiff --hunks={patchnum+1} {tmppath}/diff-{lang}-{filerepo}.txt > {tmppath}/hunk-{lang}-{filerepo}.txt")
             if ret < 0:
@@ -209,11 +168,9 @@ def main():
             result["ghid"] = pr["gh_number"]
             data.append(result)
             # logger.warning(f"Succeeded.")
-    # What if multiple comments for the same change?
-    #  - use oldf + hunk to deduplicate
+    # use hunk to deduplicate
     dedup_dict = {}
     for dic in data:
-        # key = dic["oldf"] + "[SEP]" + dic["hunk"]
         key = dic["old_hunk"]
         if key not in dedup_dict:
             dedup_dict[key] = dic

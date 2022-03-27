@@ -26,8 +26,9 @@ def main():
     ends = args.ends
     tmppath = args.tmppath
     filerepo = repo.replace("/", '-')
-    conn, cur = get_cursor(db, user, password)
+    conn, cur = get_cursor(db, user, password)      # get cursor to query the database
     comments = get_all(cur, "comment")
+    # comments on file ends with `ends` (e.g. `.java`)
     filtered_cmts = [cmt for cmt in comments if cmt["hunk_file"] and cmt["hunk_file"].endswith(ends)]
 
     if not os.path.exists(f"{tmppath}"):
@@ -36,7 +37,7 @@ def main():
     headers = {"Authorization": f"token {token}"}
     not_found = ['400: Invalid request', '404: Not Found']
 
-    # CREATE table
+    # CREATE table to store (comment, file) pairs
     try:
         logger.warning("Creating table comment_file_pair.")
         cur.execute(f"create table comment_file_pair (id bigint primary key, file_path text, oldf text, newf text, diff text);")
@@ -55,8 +56,9 @@ def main():
         tryfbid = False
         file_path = cmt["hunk_file"]
         commit_id = cmt["commit_id"]
+        # I do not know what fb_id is, but when commit_id is none, I use fb_id
         commit_fb_id = cmt["commit_fallback_id"]
-
+        # Query the database to get commit with the id
         if not commit_id:
             # logger.warning(f"\tEmpty commit_id for comment {cmt['id']}")
             if not commit_fb_id:
@@ -86,23 +88,23 @@ def main():
         comment_time = cmt['created_at']
         # get the index of the commit that is closest to the comment
         commentcommitid = cmt["commit_id"]
-        if not commentcommitid:
-            commitidx = 0
-            while commitidx + 1 < len(allcommits) and allcommits[commitidx + 1]["created_at"] < comment_time:
-                commitidx += 1
-            commit = allcommits[commitidx]
-        else:       # if there is commit id in comment, use it; do not have to use timeline
+        if commentcommitid:
             try:
                 commit = get_from_attr(cur, "commit", "id", commentcommitid)[0]
             except:
                 # logger.warning(f"\tcommit_id not found in comment {cmt['id']}")
                 continue
+        else:   # find the closest commit to the comment
+            commitidx = 0
+            while commitidx + 1 < len(allcommits) and allcommits[commitidx + 1]["created_at"] < comment_time:
+                commitidx += 1
+            commit = allcommits[commitidx]
         commit_id = commit["id"]
         # get current commit hash value
         hashv = commit["hash"]
         first_commit = allcommits[0]
         first_hashv_b = first_commit["hash_parent"]
-        # diff between current commit and first_commit in this PR
+        # calculate diff between current commit and first_commit in this PR
         try:
             oldurl = f"https://raw.githubusercontent.com/{repo}/{first_hashv_b}/{file_path}"
             newurl = f"https://raw.githubusercontent.com/{repo}/{hashv}/{file_path}"
